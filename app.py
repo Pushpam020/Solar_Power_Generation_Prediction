@@ -67,7 +67,7 @@ with col1:
 
 with col2:
     if st.button("✨ Reset to Defaults"):
-        st.experimental_rerun()
+        st.rerun()
 
 with st.expander("🔧 See input as table"):
     st.dataframe(pd.DataFrame([user_vals]))
