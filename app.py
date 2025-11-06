@@ -4,11 +4,23 @@ import pandas as pd
 import joblib
 import os
 import matplotlib.pyplot as plt
+from datetime import datetime
 
 # ---------------------------------------------------
 # Page configuration
 # ---------------------------------------------------
 st.set_page_config(page_title="Solar Power Generation Predictor", page_icon="🔆", layout="centered")
+
+# ---------------------------------------------------
+# Helper: map prediction to level + color
+# ---------------------------------------------------
+def power_level_and_color(pred: float):
+    if pred < 2000:
+        return "Low", "#ff6b6b"       # red
+    elif pred < 4000:
+        return "Moderate", "#f4c542"  # yellow
+    else:
+        return "High", "#4cd137"      # green
 
 # ---------------------------------------------------
 # Title & intro
@@ -25,7 +37,7 @@ def load_artifacts():
     model_path = "best_model.pkl"
     scaler_path = "scaler.pkl"
     if not os.path.exists(model_path) or not os.path.exists(scaler_path):
-        st.error("❌ Model or scaler file missing. Please upload `best_model.pkl` and `scaler.pkl`.")
+        st.error(" Model or scaler file missing. Please upload `best_model.pkl` and `scaler.pkl`.")
         st.stop()
     model = joblib.load(model_path)
     scaler = joblib.load(scaler_path)
@@ -49,6 +61,44 @@ FEATURES = [
 ]
 
 # ---------------------------------------------------
+# Session state for prediction
+# ---------------------------------------------------
+if "pred" not in st.session_state:
+    st.session_state.pred = None
+
+# ---------------------------------------------------
+# TOP SUMMARY CARD (shows current status if predicted)
+# ---------------------------------------------------
+status_container = st.container()
+with status_container:
+    st.markdown("<br>", unsafe_allow_html=True)  # small spacing
+    if st.session_state.pred is not None:
+        level, color = power_level_and_color(st.session_state.pred)
+        st.markdown(f"""
+        <div style="
+            border-radius:12px;
+            padding:14px 16px;
+            background:{color}22;
+            border:1px solid {color};
+            display:flex; align-items:center; gap:10px;">
+            <div style="width:10px; height:10px; border-radius:50%; background:{color};"></div>
+            <div style="font-weight:600;">Current Prediction Status:
+                <span style="color:{color}">{level}</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <div style="
+            border-radius:12px;
+            padding:14px 16px;
+            background:#eeeeee22;
+            border:1px solid #cccccc;">
+            <strong>Current Prediction Status:</strong> No prediction yet — enter inputs and click <em>Predict</em>.
+        </div>
+        """, unsafe_allow_html=True)
+
+# ---------------------------------------------------
 # Sidebar Inputs
 # ---------------------------------------------------
 st.sidebar.header("Input Parameters")
@@ -70,31 +120,43 @@ def sidebar_inputs():
 user_vals = sidebar_inputs()
 
 # ---------------------------------------------------
-# Session state for prediction
-# ---------------------------------------------------
-if "pred" not in st.session_state:
-    st.session_state.pred = None
-
-# ---------------------------------------------------
 # Predict / Reset
 # ---------------------------------------------------
 c1, c2 = st.columns(2)
 
 with c1:
-    if st.button("🔮 Predict"):
+    if st.button("🔮 Predict", use_container_width=True):
+        # Build input row in the same feature order
         row = pd.DataFrame([[user_vals[f] for f in FEATURES]], columns=FEATURES)
+
+        # Scale the new inputs
         X_scaled = scaler.transform(row)
+
+        # Predict fresh every click
         pred = float(model.predict(X_scaled)[0])
         st.session_state.pred = pred
+
+        # Show output
         st.success(f"Estimated Power Generated: **{pred:,.0f}** units")
 
+        # Timestamp of prediction
+        timestamp = datetime.now().strftime("%d-%b-%Y %I:%M:%S %p")
+        st.caption(f"🕒 Last Updated: {timestamp}")
+
+        # Debug info (expand when testing; remove later if you want)
+        with st.expander("🔍 Debug Info (for testing)"):
+            st.write("**Input values:**")
+            st.dataframe(row)
+            st.write("**Scaled values:**")
+            st.dataframe(pd.DataFrame(X_scaled, columns=FEATURES))
+
 with c2:
-    if st.button("✨ Reset to Defaults"):
+    if st.button("✨ Reset to Defaults", use_container_width=True):
         st.session_state.pred = None
-        st.rerun()  # stable replacement for deprecated st.experimental_rerun()
+        st.rerun()
 
 # ---------------------------------------------------
-# Show inputs table
+# Show inputs table (for transparency)
 # ---------------------------------------------------
 with st.expander("🔧 See input as table"):
     st.dataframe(pd.DataFrame([user_vals]))
@@ -141,12 +203,7 @@ if st.session_state.pred is not None:
     st.subheader("🌞 Power Generation Visualization")
 
     # Category thresholds
-    if pred < 2000:
-        level, color = "Low", "#ff6b6b"       # red
-    elif pred < 4000:
-        level, color = "Moderate", "#f4c542"  # yellow
-    else:
-        level, color = "High", "#4cd137"      # green
+    level, color = power_level_and_color(pred)
 
     # Bar chart
     fig, ax = plt.subplots(figsize=(6, 1.8))
@@ -169,7 +226,7 @@ if st.session_state.pred is not None:
         st.success("☀️ Prediction indicates **high power generation** — ideal conditions for solar output!")
         st.balloons()
 
-    # Add Legend (color strip)
+    # Color Legend (Low–Moderate–High)
     st.markdown("""
     <div style='display:flex; justify-content:space-evenly; text-align:center; margin-top:15px;'>
         <div style='background-color:#ff6b6b; width:60px; height:15px; border-radius:5px;'></div>
@@ -187,7 +244,6 @@ if st.session_state.pred is not None:
     st.markdown("##### 📈 Power Comparison Trend")
     trend_values = np.array([pred * 0.8, pred * 0.9, pred])
     st.line_chart(trend_values)
-
 
 # ---------------------------------------------------
 # Footer
