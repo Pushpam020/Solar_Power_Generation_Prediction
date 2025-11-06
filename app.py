@@ -169,10 +169,25 @@ if st.session_state.pred is not None:
         st.success("☀️ Prediction indicates **high power generation** — ideal conditions for solar output!")
         st.balloons()
 
+    # Add Legend (color strip)
+    st.markdown("""
+    <div style='display:flex; justify-content:space-evenly; text-align:center; margin-top:15px;'>
+        <div style='background-color:#ff6b6b; width:60px; height:15px; border-radius:5px;'></div>
+        <div style='background-color:#f4c542; width:60px; height:15px; border-radius:5px;'></div>
+        <div style='background-color:#4cd137; width:60px; height:15px; border-radius:5px;'></div>
+    </div>
+    <div style='display:flex; justify-content:space-evenly; font-size:13px; margin-top:5px;'>
+        <span>Low</span>
+        <span>Moderate</span>
+        <span>High</span>
+    </div>
+    """, unsafe_allow_html=True)
+
     # Mini trend line
     st.markdown("##### 📈 Power Comparison Trend")
     trend_values = np.array([pred * 0.8, pred * 0.9, pred])
     st.line_chart(trend_values)
+
 
 # ---------------------------------------------------
 # Footer
