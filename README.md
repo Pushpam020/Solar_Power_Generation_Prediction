@@ -1,4 +1,4 @@
-# 🔆 Solar Power Prediction – Streamlit App
+# 🔆 Solar Power Generation Prediction – Streamlit App
 
 ## Files
 - `app.py` – Streamlit UI (loads scaler + model and predicts)
